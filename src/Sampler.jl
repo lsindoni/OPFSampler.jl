@@ -122,7 +122,7 @@ end
 """
 function parse_opf_settings(;settings...)
     setting = Dict{String, Any}("output" => Dict("branch_flows" => true))
-    for k, v in settings
+    for (k, v) in settings
         setting[String(k)] = v
     end
     return setting

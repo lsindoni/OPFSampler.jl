@@ -97,6 +97,38 @@ function DC_OPF_sampling(
     return input_cases, params["case_network"]
 end
 
+
+"""
+    function parse_opf_settings(;settings...)
+
+    parse the kwargs settings into a dictionary that can be passed as options for
+    PowerModels.build_model.
+    Usage:
+
+    ```julia
+
+    parse_opf_settings()
+
+    # returns Dict("output" => Dict("branch_flows" => true))
+
+    parse_opf_settings(;output=Dict("duals" => true))
+
+    # returns Dict("output" => Dict("duals" => true))
+
+    '''
+
+    It does overwrite default configuration.
+
+"""
+function parse_opf_settings(;settings...)
+    setting = Dict{String, Any}("output" => Dict("branch_flows" => true))
+    for k, v in settings
+        setting[String(k)] = v
+    end
+    return setting
+end
+
+
 """
     function RunDCSampler(
         n_samples::Int,
@@ -124,8 +156,10 @@ function RunDCSampler(
     n_samples::Int,
     params::Dict;
     threshold::Float64=1.0e-5,
-    rng = MersenneTwister(123),
+    rng =MersenneTwister(123),
+    settings...
     )
+    setting = parse_opf_settings(; settings...)
     iter = 1
     n_samples_new = n_samples
     feas_samples = []
@@ -138,7 +172,6 @@ function RunDCSampler(
             set_gen_pmax!(mycase, samples[sm]["pmax"])
             set_dc_branch_param!(mycase, br_x = samples[sm]["br_x"],
             rate_a = samples[sm]["rate_a"])
-            setting = Dict("output" => Dict("branch_flows" => true))
             dc_pm = build_model(mycase, DCPPowerModel, PowerModels.post_opf, setting=setting)
             res = optimize_model!(dc_pm, ipopt_solver)
             samples[sm]["OPF_output"] = res
@@ -321,7 +354,9 @@ function RunACSampler(
     n_samples::Int,
     params::Dict;
     rng = MersenneTwister(123),
+    settings...
     )
+    setting = parse_opf_settings(; settings...)
     iter = 1
     n_samples_new = n_samples
     feas_samples = []
@@ -336,7 +371,6 @@ function RunACSampler(
             set_gen_qmax!(mycase, samples[sm]["qmax"])
             set_ac_branch_param!(mycase, br_x = samples[sm]["br_x"],
             br_r = samples[sm]["br_r"], rate_a = samples[sm]["rate_a"])
-            setting = Dict("output" => Dict("branch_flows" => true))
             ac_pm = build_model(mycase, ACPPowerModel, PowerModels.post_opf, setting=setting)
             res = optimize_model!(ac_pm, ipopt_solver)
             samples[sm]["OPF_output"] = res
